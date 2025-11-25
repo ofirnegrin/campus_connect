@@ -176,7 +176,7 @@ useEffect(() => {
       { id: '2', username: 'sarah.wilson', name: 'Sarah Wilson', year: '3rd Year', program: 'Computer Science', gender: 'Female', photoUrl: '', isOnCampus: true },
       { id: '3', username: 'marcus.patel', name: 'Marcus Patel', year: '2nd Year', program: 'Business Management', gender: 'Male', photoUrl: '', isOnCampus: false },
       { id: '4', username: 'priya.chen', name: 'Priya Chen', year: '4th Year', program: 'Engineering', gender: 'Female', photoUrl: '', isOnCampus: false },
-      { id: '5', username: 'alex.kumar', name: 'Alex Kumar', year: '3rd Year', program: 'Computer Science', gender: 'Non-binary', photoUrl: '', isOnCampus: true },
+      { id: '5', username: 'alex.kumar', name: 'Alex Kumar', year: '3rd Year', program: 'Computer Science', gender: 'Male', photoUrl: '', isOnCampus: true },
       { id: '6', username: 'lisa.zhang', name: 'Lisa Zhang', year: '3rd Year', program: 'Engineering', gender: 'Female', photoUrl: '', isOnCampus: false }
     ];
     setAllUsers(mockUsers);
@@ -688,7 +688,6 @@ useEffect(() => {
             <option value="">Select Gender</option>
             <option value="Male">Male</option>
             <option value="Female">Female</option>
-            <option value="Non-binary">Non-binary</option>
             <option value="Prefer not to say">Prefer not to say</option>
           </select>
           
@@ -1050,7 +1049,6 @@ useEffect(() => {
             <option value="">Select Gender</option>
             <option value="Male">Male</option>
             <option value="Female">Female</option>
-            <option value="Non-binary">Non-binary</option>
             <option value="Prefer not to say">Prefer not to say</option>
           </select>
           
