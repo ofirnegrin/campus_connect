@@ -1148,6 +1148,355 @@ useEffect(() => {
       </div>
     );
   }
+// HOME TAB RENDER
+  const renderHome = () => (
+    <div>
+      {/* Active Invites Section */}
+      {invites.received.length > 0 && (
+        <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 rounded-xl p-4 mb-4">
+          <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+            <Bell className="w-5 h-5 text-blue-600" />
+            ACTIVE INVITES ({invites.received.length})
+          </h3>
+          <div className="space-y-3">
+            {invites.received.map(invite => {
+              const person = getUserById(invite.from);
+              return (
+                <div key={invite.id} className="bg-white rounded-xl shadow-sm p-4">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-full bg-blue-500 text-white flex items-center justify-center font-semibold text-sm">
+                      {getInitials(person?.name || 'U')}
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-semibold text-gray-800">{person?.name}</div>
+                      <div className="text-sm text-gray-600">wants to {invite.activity.toLowerCase()}</div>
+                      <div className="text-sm text-gray-500">📍 {invite.location}</div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => handleInviteResponse(invite.id, 'accepted')}
+                      className="flex-1 bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 transition font-semibold"
+                    >
+                      Accept
+                    </button>
+                    <button 
+                      onClick={() => handleInviteResponse(invite.id, 'declined')}
+                      className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300 transition font-semibold"
+                    >
+                      Decline
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* On Campus Now Section */}
+      <div className="bg-white rounded-xl shadow-sm p-4 mb-4">
+        <h3 className="font-bold text-gray-800 mb-3 flex items-center justify-between">
+          <span className="flex items-center gap-2">
+            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+            ON CAMPUS NOW ({getOnCampusConnections().length})
+          </span>
+          {selectedPeople.length > 0 && (
+            <button
+              onClick={openInviteModal}
+              className="text-sm bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-600 transition"
+            >
+              Invite ({selectedPeople.length})
+            </button>
+          )}
+        </h3>
+        
+        {getOnCampusConnections().length === 0 ? (
+          <div className="text-center py-8">
+            <Users className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+            <p className="text-gray-600">No friends on campus right now</p>
+            <p className="text-sm text-gray-500 mt-1">They'll appear here when they arrive</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {getOnCampusConnections().map(person => (
+              <div key={person.id} className="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition">
+                <input
+                  type="checkbox"
+                  checked={selectedPeople.includes(person.id)}
+                  onChange={() => togglePersonSelection(person.id)}
+                  disabled={!isOnCampus}
+                  className={'w-5 h-5 rounded cursor-pointer ' + (isOnCampus ? 'text-blue-500' : 'text-gray-300 cursor-not-allowed')}
+                />
+                <div 
+                  onClick={() => setSelectedUserProfile(person)}
+                  className="flex items-center gap-3 flex-1 cursor-pointer"
+                >
+                  <div className="w-12 h-12 rounded-full bg-blue-500 text-white flex items-center justify-center font-semibold">
+                    {getInitials(person.name)}
+                  </div>
+                  <div>
+                    <div className="font-semibold text-gray-800">{person.name}</div>
+                    <div className="text-sm text-gray-600">@{person.username}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Sent/Upcoming Invites */}
+      {(invites.sent.length > 0 || invites.upcoming.length > 0) && (
+        <div className="bg-white rounded-xl shadow-sm p-4">
+          <h3 className="font-bold text-gray-800 mb-3">YOUR INVITES</h3>
+          
+          {invites.sent.length > 0 && (
+            <div className="mb-4">
+              <h4 className="text-sm font-semibold text-gray-600 mb-2">Sent ({invites.sent.length})</h4>
+              <div className="space-y-2">
+                {invites.sent.map(invite => {
+                  const person = getUserById(invite.to);
+                  return (
+                    <div key={invite.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-blue-500 text-white flex items-center justify-center font-semibold text-sm">
+                          {getInitials(person?.name || 'U')}
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-800">You → {person?.name}</div>
+                          <div className="text-sm text-gray-600">{invite.activity} • {invite.location}</div>
+                        </div>
+                      </div>
+                      <div className="text-sm text-yellow-600 font-medium">⏳ Pending</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {invites.upcoming.length > 0 && (
+            <div>
+              <h4 className="text-sm font-semibold text-gray-600 mb-2">Upcoming ({invites.upcoming.length})</h4>
+              <div className="space-y-2">
+                {invites.upcoming.map(invite => {
+                  const person = getUserById(invite.from === user.id ? invite.to : invite.from);
+                  return (
+                    <div key={invite.id} className="p-3 bg-green-50 rounded-lg border border-green-200">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 rounded-full bg-green-500 text-white flex items-center justify-center font-semibold text-sm">
+                          {getInitials(person?.name || 'U')}
+                        </div>
+                        <div>
+                          <div className="font-semibold text-gray-800">{invite.activity} with {person?.name}</div>
+                          <div className="text-sm text-gray-600">📍 {invite.location}</div>
+                        </div>
+                      </div>
+                      <button className="w-full bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 transition font-semibold">
+                        I'm Here
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
+  // FRIENDS TAB RENDER
+  const renderFriends = () => (
+    <div>
+      {/* Search Bar */}
+      <div className="mb-4 relative">
+        <div className="relative">
+          <Search className="absolute left-4 top-3.5 w-5 h-5 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search by name or @username..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
+        
+        {/* Search Results Dropdown */}
+        {searchQuery.length > 0 && searchResults.length > 0 && (
+          <div className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-lg max-h-96 overflow-y-auto">
+            {searchResults.map(person => {
+              const isConnected = myConnections.includes(person.id);
+              const isPending = pendingIncoming.includes(person.id);
+              
+              return (
+                <div
+                  key={person.id}
+                  onClick={() => {
+                    setSelectedUserProfile(person);
+                    setSearchQuery('');
+                  }}
+                  className="flex items-center justify-between p-4 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-blue-500 text-white flex items-center justify-center font-semibold">
+                      {getInitials(person.name)}
+                    </div>
+                    <div>
+                      <div className="font-semibold text-gray-800">{person.name}</div>
+                      <div className="text-sm text-gray-600">@{person.username}</div>
+                      <div className="text-xs text-gray-500">{person.year} • {person.program}</div>
+                    </div>
+                  </div>
+                  <div className="text-sm">
+                    {isConnected ? (
+                      <span className="text-green-600 font-medium">✓ Friends</span>
+                    ) : isPending ? (
+                      <span className="text-blue-600 font-medium">Requested</span>
+                    ) : (
+                      <UserPlus className="w-5 h-5 text-blue-500" />
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Friend Requests Section */}
+      {pendingIncoming.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm p-4 mb-4">
+          <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+            <UserPlus className="w-5 h-5 text-blue-600" />
+            FRIEND REQUESTS ({pendingIncoming.length})
+          </h3>
+          <div className="space-y-3">
+            {pendingIncoming.map(userId => {
+              const person = getUserById(userId);
+              if (!person) return null;
+              return (
+                <div key={userId} className="flex items-center justify-between">
+                  <div 
+                    onClick={() => setSelectedUserProfile(person)}
+                    className="flex items-center gap-3 flex-1 cursor-pointer"
+                  >
+                    <div className="w-12 h-12 rounded-full bg-blue-500 text-white flex items-center justify-center font-semibold">
+                      {getInitials(person.name)}
+                    </div>
+                    <div>
+                      <div className="font-semibold text-gray-800">{person.name}</div>
+                      <div className="text-sm text-gray-600">{person.year} • {person.program}</div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => handleAcceptRequest(userId)}
+                      className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition font-semibold"
+                    >
+                      Accept
+                    </button>
+                    <button 
+                      onClick={() => handleDeclineRequest(userId)}
+                      className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition font-semibold"
+                    >
+                      Decline
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Sub-tabs */}
+      <div className="flex gap-4 mb-4 border-b">
+        <button
+          onClick={() => setFriendsTab('friends')}
+          className={'pb-3 px-2 font-medium transition ' + (friendsTab === 'friends' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-gray-600')}
+        >
+          Your Friends ({myConnections.length})
+        </button>
+        <button
+          onClick={() => setFriendsTab('discover')}
+          className={'pb-3 px-2 font-medium transition ' + (friendsTab === 'discover' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-gray-600')}
+        >
+          Discover
+        </button>
+      </div>
+
+      {friendsTab === 'friends' && (
+        <div className="space-y-2">
+          {getAllConnections().length === 0 ? (
+            <div className="bg-white rounded-xl p-8 text-center">
+              <Users className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+              <p className="text-gray-600 mb-2">No friends yet</p>
+              <p className="text-sm text-gray-500">Use the search bar above or check out Discover</p>
+            </div>
+          ) : (
+            getAllConnections().map(person => (
+              <div 
+                key={person.id}
+                onClick={() => setSelectedUserProfile(person)}
+                className="bg-white rounded-xl shadow-sm p-4 flex items-center gap-3 cursor-pointer hover:bg-gray-50 transition"
+              >
+                <div className="w-12 h-12 rounded-full bg-blue-500 text-white flex items-center justify-center font-semibold">
+                  {getInitials(person.name)}
+                </div>
+                <div className="flex-1">
+                  <div className="font-semibold text-gray-800">{person.name}</div>
+                  <div className="text-sm text-gray-600">@{person.username}</div>
+                  <div className={'text-sm flex items-center gap-1 mt-1 ' + (person.isOnCampus ? 'text-green-600' : 'text-gray-500')}>
+                    <MapPin className="w-4 h-4" />
+                    {person.isOnCampus ? 'On Campus' : 'Off Campus'}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {friendsTab === 'discover' && (
+        <div>
+          <h3 className="text-sm font-bold text-gray-700 mb-3">DISCOVER</h3>
+          <div className="space-y-3">
+            {getDiscoverUsers().slice(0, 8).map(person => (
+              <div key={person.id} className="bg-white rounded-xl shadow-sm p-4 flex items-center justify-between">
+                <div 
+                  onClick={() => setSelectedUserProfile(person)}
+                  className="flex items-center gap-3 flex-1 cursor-pointer"
+                >
+                  <div className="w-12 h-12 rounded-full bg-purple-500 text-white flex items-center justify-center font-semibold">
+                    {getInitials(person.name)}
+                  </div>
+                  <div>
+                    <div className="font-semibold text-gray-800">{person.name}</div>
+                    <div className="text-sm text-gray-600">{person.year} • {person.program}</div>
+                    {person.isOnCampus && (
+                      <div className="text-sm text-green-600 flex items-center gap-1 mt-1">
+                        <MapPin className="w-4 h-4" />
+                        On campus now
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <button 
+                  onClick={() => handleSendRequest(person.id)}
+                  className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition flex items-center gap-1 font-semibold"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  Connect
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 const renderProfile = () => (
     <div className="space-y-4">
       <div className="bg-white rounded-xl shadow-sm p-6 text-center">
