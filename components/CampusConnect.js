@@ -681,73 +681,42 @@ const CampusConnect = () => {
       )}
 
       {dashboardTab === 'discover' && (
-        <div className="space-y-4">
-          <div>
-            <h3 className="text-sm font-bold text-gray-700 mb-3">FROM YOUR PROGRAM</h3>
-            <div className="space-y-3">
-              {getDiscoverUsers().filter(u => u.program === profile.program).slice(0, 3).map(person => (
-                <div key={person.id} className="bg-white rounded-xl shadow-sm p-4 flex items-center justify-between">
-                  <div 
-                    onClick={() => setSelectedUserProfile(person)}
-                    className="flex items-center gap-3 flex-1 cursor-pointer"
-                  >
-                    <div className="w-12 h-12 rounded-full bg-purple-500 text-white flex items-center justify-center font-semibold">
-                      {getInitials(person.name)}
-                    </div>
-                    <div>
-                      <div className="font-semibold text-gray-800">{person.name}</div>
-                      <div className="text-sm text-gray-600">{person.year} • {person.program}</div>
-                      {person.isOnCampus && (
-                        <div className="text-sm text-green-600 flex items-center gap-1 mt-1">
-                          <MapPin className="w-4 h-4" />
-                          On campus now
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <button 
-                    onClick={() => handleSendRequest(person.id)}
-                    className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition flex items-center gap-1"
-                  >
-                    <UserPlus className="w-4 h-4" />
-                    Connect
-                  </button>
+  <div>
+    <h3 className="text-sm font-bold text-gray-700 mb-3">DISCOVER</h3>
+    <div className="space-y-3">
+      {getDiscoverUsers().slice(0, 8).map(person => (
+        <div key={person.id} className="bg-white rounded-xl shadow-sm p-4 flex items-center justify-between">
+          <div 
+            onClick={() => setSelectedUserProfile(person)}
+            className="flex items-center gap-3 flex-1 cursor-pointer"
+          >
+            <div className="w-12 h-12 rounded-full bg-purple-500 text-white flex items-center justify-center font-semibold">
+              {getInitials(person.name)}
+            </div>
+            <div>
+              <div className="font-semibold text-gray-800">{person.name}</div>
+              <div className="text-sm text-gray-600">{person.year} • {person.program}</div>
+              {person.isOnCampus && (
+                <div className="text-sm text-green-600 flex items-center gap-1 mt-1">
+                  <MapPin className="w-4 h-4" />
+                  On campus now
                 </div>
-              ))}
+              )}
             </div>
           </div>
-
-          <div>
-            <h3 className="text-sm font-bold text-gray-700 mb-3">SAME YEAR</h3>
-            <div className="space-y-3">
-              {getDiscoverUsers().filter(u => u.year === profile.year && u.program !== profile.program).slice(0, 2).map(person => (
-                <div key={person.id} className="bg-white rounded-xl shadow-sm p-4 flex items-center justify-between">
-                  <div 
-                    onClick={() => setSelectedUserProfile(person)}
-                    className="flex items-center gap-3 flex-1 cursor-pointer"
-                  >
-                    <div className="w-12 h-12 rounded-full bg-purple-500 text-white flex items-center justify-center font-semibold">
-                      {getInitials(person.name)}
-                    </div>
-                    <div>
-                      <div className="font-semibold text-gray-800">{person.name}</div>
-                      <div className="text-sm text-gray-600">{person.year} • {person.program}</div>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={() => handleSendRequest(person.id)}
-                    className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition flex items-center gap-1"
-                  >
-                    <UserPlus className="w-4 h-4" />
-                    Connect
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
+          <button 
+            onClick={() => handleSendRequest(person.id)}
+            className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition flex items-center gap-1"
+          >
+            <UserPlus className="w-4 h-4" />
+            Connect
+          </button>
         </div>
-      )}
+      ))}
     </div>
+  </div>
+)}
+  </div>
   );
 
   const renderFriends = () => (
