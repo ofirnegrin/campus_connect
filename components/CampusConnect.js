@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Bell, RefreshCw, UserPlus, UserMinus, Check, X, Send, MapPin, Coffee, BookOpen, Utensils, Dumbbell, Edit, Settings, HelpCircle, LogOut, ChevronRight, MoreVertical, Zap } from 'lucide-react';
+import { Users, Bell, RefreshCw, UserPlus, UserMinus, Check, X, Send, MapPin, Coffee, BookOpen, Utensils, Dumbbell, Edit, Settings, HelpCircle, LogOut, ChevronRight, Search, Zap } from 'lucide-react';
 
 const TMU_CAMPUS = {
   lat: 43.6577,
@@ -7,12 +7,33 @@ const TMU_CAMPUS = {
   radius: 0.5
 };
 
+const tmuPrograms = [
+  "Aerospace Engineering", "Architectural Science", "Biomedical Engineering", "Chemical Engineering",
+  "Civil Engineering", "Computer Engineering", "Electrical Engineering", "Industrial Engineering",
+  "Mechanical Engineering", "Accounting and Finance", "Business Management", 
+  "Business Technology Management", "Economics and Management Science", "Entrepreneurship",
+  "Global Management Studies", "Hospitality and Tourism Management", "Human Resources Management",
+  "Law and Business", "Marketing Management", "Real Estate Management", "Retail Management",
+  "Applied Chemistry and Biology", "Biomedical Sciences", "Chemistry", "Computer Science",
+  "Financial Mathematics", "Mathematics and Its Applications", "Medical Physics",
+  "Undeclared Science", "Creative Industries", "Fashion", "Graphic Communications Management",
+  "Image Arts", "Interior Design", "Journalism", "Media Production", "Performance",
+  "Professional Communication", "RTA School of Media", "Sports Media", "Child and Youth Care",
+  "Criminal Justice", "Disability Studies", "Early Childhood Studies", "Health Administration",
+  "Midwifery", "Nursing", "Nutrition and Food", "Occupational and Public Health",
+  "Psychology", "Social Work", "Urban and Regional Planning", "Arts and Contemporary Studies",
+  "Criminology", "English", "Geographic Analysis", "History", 
+  "Language and Intercultural Relations", "Philosophy", "Politics and Governance",
+  "Professional Music", "Sociology", "Undeclared Arts", "Other"
+];
+
 const CampusConnect = () => {
   const [page, setPage] = useState('auth');
-  const [currentTab, setCurrentTab] = useState('dashboard');
-  const [dashboardTab, setDashboardTab] = useState('oncampus');
-  const [friendsTab, setFriendsTab] = useState('connections');
-  const [invitesTab, setInvitesTab] = useState('received');
+  const [currentTab, setCurrentTab] = useState('home');
+  const [friendsTab, setFriendsTab] = useState('friends');
+  const [showWelcome, setShowWelcome] = useState(true);
+  const [tutorialStep, setTutorialStep] = useState(0);
+  const [showTutorial, setShowTutorial] = useState(false);
   
   const [user, setUser] = useState(null);
   const [email, setEmail] = useState('');
@@ -34,11 +55,12 @@ const CampusConnect = () => {
   const [manuallyOff, setManuallyOff] = useState(false);
   const [allUsers, setAllUsers] = useState([]);
   const [myConnections, setMyConnections] = useState([]);
-  const [pendingOutgoing, setPendingOutgoing] = useState([]);
   const [pendingIncoming, setPendingIncoming] = useState([]);
   const [invites, setInvites] = useState({ received: [], sent: [], upcoming: [] });
   const [error, setError] = useState('');
   
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [selectedPeople, setSelectedPeople] = useState([]);
   const [selectedActivity, setSelectedActivity] = useState('');
@@ -65,8 +87,7 @@ const CampusConnect = () => {
   ];
 
   const yearOptions = ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', 'Graduate', 'Other'];
-
-  useEffect(() => {
+useEffect(() => {
     checkSession();
     checkLocation();
     loadMockData();
@@ -81,10 +102,22 @@ const CampusConnect = () => {
     }
   }, [user, page]);
 
+  useEffect(() => {
+    if (searchQuery.length > 0) {
+      handleSearch(searchQuery);
+    } else {
+      setSearchResults([]);
+    }
+  }, [searchQuery, allUsers]);
+
   const checkSession = () => {
     const stored = localStorage.getItem('cc_user');
     if (stored) {
       setUser(JSON.parse(stored));
+      const hasSeenTutorial = localStorage.getItem('cc_tutorial_seen');
+      if (!hasSeenTutorial) {
+        setShowTutorial(true);
+      }
       setPage('app');
     }
   };
@@ -141,7 +174,7 @@ const CampusConnect = () => {
     const mockUsers = [
       { id: '1', username: 'john.smith', name: 'John Smith', year: '3rd Year', program: 'Computer Science', gender: 'Male', photoUrl: '', isOnCampus: true },
       { id: '2', username: 'sarah.wilson', name: 'Sarah Wilson', year: '3rd Year', program: 'Computer Science', gender: 'Female', photoUrl: '', isOnCampus: true },
-      { id: '3', username: 'marcus.patel', name: 'Marcus Patel', year: '2nd Year', program: 'Business', gender: 'Male', photoUrl: '', isOnCampus: false },
+      { id: '3', username: 'marcus.patel', name: 'Marcus Patel', year: '2nd Year', program: 'Business Management', gender: 'Male', photoUrl: '', isOnCampus: false },
       { id: '4', username: 'priya.chen', name: 'Priya Chen', year: '4th Year', program: 'Engineering', gender: 'Female', photoUrl: '', isOnCampus: false },
       { id: '5', username: 'alex.kumar', name: 'Alex Kumar', year: '3rd Year', program: 'Computer Science', gender: 'Non-binary', photoUrl: '', isOnCampus: true },
       { id: '6', username: 'lisa.zhang', name: 'Lisa Zhang', year: '3rd Year', program: 'Engineering', gender: 'Female', photoUrl: '', isOnCampus: false }
@@ -151,15 +184,30 @@ const CampusConnect = () => {
 
   const loadUserData = () => {
     const connections = JSON.parse(localStorage.getItem('cc_connections_' + user.id) || '["1", "2"]');
-    const outgoing = JSON.parse(localStorage.getItem('cc_pending_outgoing_' + user.id) || '[]');
     const incoming = JSON.parse(localStorage.getItem('cc_pending_incoming_' + user.id) || '["6"]');
     
     setMyConnections(connections);
-    setPendingOutgoing(outgoing);
     setPendingIncoming(incoming);
     
     const storedInvites = JSON.parse(localStorage.getItem('cc_invites_' + user.id) || '{"received":[],"sent":[],"upcoming":[]}');
     setInvites(storedInvites);
+  };
+
+  const handleSearch = (query) => {
+    const lowerQuery = query.toLowerCase();
+    const results = allUsers.filter(u => {
+      if (u.id === user?.id) return false;
+      const fullName = u.name.toLowerCase();
+      const username = u.username.toLowerCase();
+      const firstName = fullName.split(' ')[0];
+      const lastName = fullName.split(' ').slice(1).join(' ');
+      
+      return fullName.includes(lowerQuery) ||
+             username.includes(lowerQuery) ||
+             firstName.includes(lowerQuery) ||
+             lastName.includes(lowerQuery);
+    });
+    setSearchResults(results.slice(0, 10));
   };
 
   const handleAuth = () => {
@@ -168,6 +216,7 @@ const CampusConnect = () => {
       setError('Please use your TMU email');
       return;
     }
+    setShowWelcome(false);
     setAwaitingVerification(true);
   };
 
@@ -228,13 +277,21 @@ const CampusConnect = () => {
     const completeUser = { ...user, ...profile };
     localStorage.setItem('cc_user', JSON.stringify(completeUser));
     setUser(completeUser);
+    setShowTutorial(true);
     setPage('app');
   };
 
+  const completeTutorial = () => {
+    setShowTutorial(false);
+    localStorage.setItem('cc_tutorial_seen', 'true');
+  };
+
   const handleSendRequest = (userId) => {
-    const newOutgoing = [...pendingOutgoing, userId];
-    setPendingOutgoing(newOutgoing);
-    localStorage.setItem('cc_pending_outgoing_' + user.id, JSON.stringify(newOutgoing));
+    const newIncoming = [...pendingIncoming];
+    if (!newIncoming.includes(userId)) {
+      setPendingIncoming([...pendingIncoming, userId]);
+      localStorage.setItem('cc_pending_incoming_' + userId, JSON.stringify([...pendingIncoming, user.id]));
+    }
   };
 
   const handleAcceptRequest = (userId) => {
@@ -347,7 +404,7 @@ const CampusConnect = () => {
     const nonConnections = allUsers.filter(u => 
       u.id !== user?.id && 
       !myConnections.includes(u.id) &&
-      !pendingOutgoing.includes(u.id)
+      !pendingIncoming.includes(u.id)
     );
     
     return nonConnections.map(u => {
@@ -370,7 +427,73 @@ const CampusConnect = () => {
     localStorage.clear();
     setUser(null);
     setPage('auth');
-  };
+  };// WELCOME SCREEN
+  if (page === 'auth' && showWelcome) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8">
+          <div className="text-center mb-8">
+            <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+              <Users className="w-14 h-14 text-white" />
+            </div>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
+              Welcome to Campus Connect!
+            </h1>
+            <p className="text-gray-600 text-lg mb-8">Meet TMU students on campus, right now.</p>
+          </div>
+
+          <div className="space-y-4 mb-8">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                <MapPin className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800">Auto-detects when you're on campus</h3>
+                <p className="text-sm text-gray-600">No manual check-ins needed</p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+                <Users className="w-5 h-5 text-purple-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800">See your friends who are around</h3>
+                <p className="text-sm text-gray-600">Real-time campus presence</p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center flex-shrink-0">
+                <Coffee className="w-5 h-5 text-pink-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800">Send quick invites to meet up</h3>
+                <p className="text-sm text-gray-600">Study, coffee, gym, or just hang out</p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                <Check className="w-5 h-5 text-green-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800">TMU students only</h3>
+                <p className="text-sm text-gray-600">Verified @torontomu.ca emails</p>
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setShowWelcome(false)}
+            className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-4 rounded-xl font-bold text-lg hover:shadow-lg transition transform hover:scale-105"
+          >
+            Get Started →
+          </button>
+        </div>
+      </div>
+    );
+  }
   // AUTH PAGE
   if (page === 'auth') {
     return (
@@ -380,23 +503,21 @@ const CampusConnect = () => {
             <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
               <Users className="w-12 h-12 text-white" />
             </div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
-              Welcome to Campus Connect!
-            </h1>
-            <p className="text-gray-600 text-lg">Meet TMU students on campus, right now.</p>
+            <h1 className="text-3xl font-bold text-gray-800 mb-2">Sign In</h1>
+            <p className="text-gray-600">Enter your TMU email to continue</p>
           </div>
 
           {!awaitingVerification ? (
             <div>
               <div className="mb-6">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Your TMU Email</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">TMU Email</label>
                 <div className="relative">
                   <input
                     type="text"
                     placeholder="firstname.lastname"
                     value={email.replace('@torontomu.ca', '')}
                     onChange={(e) => setEmail(e.target.value + '@torontomu.ca')}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                    className="w-full px-4 py-3 pr-32 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                   />
                   <div className="absolute right-4 top-3 text-sm text-gray-400">@torontomu.ca</div>
                 </div>
@@ -404,13 +525,10 @@ const CampusConnect = () => {
               {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
               <button
                 onClick={handleAuth}
-                className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-4 rounded-xl font-bold text-lg hover:shadow-lg transition transform hover:scale-105"
+                className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-4 rounded-xl font-bold text-lg hover:shadow-lg transition"
               >
-                Get Started →
+                Continue →
               </button>
-              <p className="text-xs text-gray-500 text-center mt-4">
-                TMU students only • Quick 2-minute setup
-              </p>
             </div>
           ) : (
             <div>
@@ -503,8 +621,8 @@ const CampusConnect = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center p-4">
         <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 max-h-screen overflow-y-auto">
-          <h2 className="text-3xl font-bold text-gray-800 mb-2">Almost there!</h2>
-          <p className="text-gray-600 mb-6">Tell us a bit about yourself</p>
+          <h2 className="text-3xl font-bold text-gray-800 mb-2">Complete Your Profile</h2>
+          <p className="text-gray-600 mb-6">Just a few quick details</p>
           
           <div className="mb-6">
             <label className="block text-sm font-semibold text-gray-700 mb-3">Profile Photo</label>
@@ -517,7 +635,7 @@ const CampusConnect = () => {
                 </div>
               )}
               <label className="cursor-pointer bg-blue-500 text-white px-6 py-3 rounded-xl hover:bg-blue-600 transition font-semibold">
-                {profile.photoUrl ? 'Change Photo' : 'Upload Photo'}
+                {profile.photoUrl ? 'Change' : 'Upload'}
                 <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
               </label>
             </div>
@@ -551,13 +669,16 @@ const CampusConnect = () => {
             />
           )}
           
-          <input
-            type="text"
-            placeholder="Program (e.g., Computer Science)"
+          <select
             value={profile.program}
             onChange={(e) => setProfile({...profile, program: e.target.value})}
             className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl mb-4 focus:ring-2 focus:ring-blue-500"
-          />
+          >
+            <option value="">Select Program</option>
+            {tmuPrograms.map(program => (
+              <option key={program} value={program}>{program}</option>
+            ))}
+          </select>
           
           <select
             value={profile.gender}
@@ -583,401 +704,453 @@ const CampusConnect = () => {
       </div>
     );
   }
-// MAIN APP - RENDER FUNCTIONS
-  const renderDashboard = () => (
-    <div>
-      <div className="flex gap-4 mb-4 border-b overflow-x-auto">
-        <button
-          onClick={() => setDashboardTab('oncampus')}
-          className={'pb-3 px-2 font-medium transition whitespace-nowrap ' + (dashboardTab === 'oncampus' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-gray-600')}
-        >
-          On Campus ({getOnCampusConnections().length})
-        </button>
-        <button
-          onClick={() => setDashboardTab('all')}
-          className={'pb-3 px-2 font-medium transition whitespace-nowrap ' + (dashboardTab === 'all' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-gray-600')}
-        >
-          All ({getConnections().length})
-        </button>
-        <button
-          onClick={() => setDashboardTab('discover')}
-          className={'pb-3 px-2 font-medium transition whitespace-nowrap ' + (dashboardTab === 'discover' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-gray-600')}
-        >
-          Discover
-        </button>
-      </div>
 
-      {dashboardTab === 'oncampus' && (
-        <div className="space-y-3">
-          {selectedPeople.length > 0 && (
-            <button
-              onClick={openInviteModal}
-              className="w-full bg-blue-500 text-white py-3 rounded-xl font-semibold hover:bg-blue-600 transition flex items-center justify-center gap-2"
-            >
-              <Send className="w-5 h-5" />
-              Send Invite to {selectedPeople.length} {selectedPeople.length === 1 ? 'person' : 'people'}
-            </button>
-          )}
-          
-          {getOnCampusConnections().length === 0 ? (
-            <div className="bg-white rounded-xl p-8 text-center">
-              <Users className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-              <p className="text-gray-600">No connections on campus right now</p>
+  // TUTORIAL SCREENS
+  if (showTutorial) {
+    const tutorials = [
+      {
+        icon: MapPin,
+        title: "We'll detect when you're on campus",
+        description: "Campus Connect automatically knows when you're at TMU. No manual check-ins needed!",
+        color: "from-blue-500 to-blue-600"
+      },
+      {
+        icon: Users,
+        title: "See your friends who are around",
+        description: "Check who's on campus right now and send them a quick invite to meet up.",
+        color: "from-purple-500 to-purple-600"
+      },
+      {
+        icon: Coffee,
+        title: "Send quick invites",
+        description: "Invite friends to study, grab coffee, hit the gym, or just hang out. It's that simple!",
+        color: "from-pink-500 to-pink-600"
+      },
+      {
+        icon: Search,
+        title: "Discover new people",
+        description: "Find and connect with other TMU students based on your program, year, and interests.",
+        color: "from-green-500 to-green-600"
+      }
+    ];
+
+    const currentTutorial = tutorials[tutorialStep];
+    const Icon = currentTutorial.icon;
+
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8">
+          <div className="text-center mb-8">
+            <div className={`w-24 h-24 bg-gradient-to-br ${currentTutorial.color} rounded-full flex items-center justify-center mx-auto mb-6`}>
+              <Icon className="w-14 h-14 text-white" />
             </div>
-          ) : (
-            getOnCampusConnections().map(person => (
-              <div key={person.id} className="bg-white rounded-xl shadow-sm p-4 flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  checked={selectedPeople.includes(person.id)}
-                  onChange={() => togglePersonSelection(person.id)}
-                  disabled={!isOnCampus}
-                  className={'w-5 h-5 rounded cursor-pointer ' + (isOnCampus ? 'text-blue-500' : 'text-gray-300 cursor-not-allowed')}
-                />
-                <div 
-                  onClick={() => setSelectedUserProfile(person)}
-                  className="flex items-center gap-3 flex-1 cursor-pointer"
-                >
-                  <div className="w-12 h-12 rounded-full bg-blue-500 text-white flex items-center justify-center font-semibold">
-                    {getInitials(person.name)}
-                  </div>
-                  <div>
-                    <div className="font-semibold text-gray-800">{person.name}</div>
-                    <div className="text-sm text-gray-600">@{person.username}</div>
-                    <div className="text-sm text-green-600 flex items-center gap-1 mt-1">
-                      <MapPin className="w-4 h-4" />
-                      On Campus
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      )}
+            <h2 className="text-2xl font-bold text-gray-800 mb-3">{currentTutorial.title}</h2>
+            <p className="text-gray-600 text-lg">{currentTutorial.description}</p>
+          </div>
 
-      {dashboardTab === 'all' && (
-        <div className="space-y-3">
-          {getAllConnections().map(person => (
-            <div 
-              key={person.id} 
-              onClick={() => setSelectedUserProfile(person)}
-              className="bg-white rounded-xl shadow-sm p-4 flex items-center gap-3 cursor-pointer hover:bg-gray-50 transition"
-            >
-              <div className="w-12 h-12 rounded-full bg-blue-500 text-white flex items-center justify-center font-semibold">
-                {getInitials(person.name)}
+          <div className="flex justify-center gap-2 mb-8">
+            {tutorials.map((_, index) => (
+              <div
+                key={index}
+                className={`h-2 rounded-full transition-all ${
+                  index === tutorialStep ? 'w-8 bg-blue-500' : 'w-2 bg-gray-300'
+                }`}
+              />
+            ))}
+          </div>
+
+          <div className="flex gap-3">
+            {tutorialStep < tutorials.length - 1 ? (
+              <>
+                <button
+                  onClick={completeTutorial}
+                  className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-200 transition"
+                >
+                  Skip
+                </button>
+                <button
+                  onClick={() => setTutorialStep(tutorialStep + 1)}
+                  className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition"
+                >
+                  Next
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={completeTutorial}
+                className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition"
+              >
+                Start Exploring! 🚀
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+// WELCOME SCREEN
+  if (page === 'auth' && showWelcome) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8">
+          <div className="text-center mb-8">
+            <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+              <Users className="w-14 h-14 text-white" />
+            </div>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
+              Welcome to Campus Connect!
+            </h1>
+            <p className="text-gray-600 text-lg mb-8">Meet TMU students on campus, right now.</p>
+          </div>
+
+          <div className="space-y-4 mb-8">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                <MapPin className="w-5 h-5 text-blue-600" />
               </div>
               <div>
-                <div className="font-semibold text-gray-800">{person.name}</div>
-                <div className="text-sm text-gray-600">@{person.username}</div>
-                <div className={'text-sm flex items-center gap-1 mt-1 ' + (person.isOnCampus ? 'text-green-600' : 'text-gray-500')}>
-                  <MapPin className="w-4 h-4" />
-                  {person.isOnCampus ? 'On Campus' : 'Off Campus'}
-                </div>
+                <h3 className="font-semibold text-gray-800">Auto-detects when you're on campus</h3>
+                <p className="text-sm text-gray-600">No manual check-ins needed</p>
               </div>
             </div>
-          ))}
-        </div>
-      )}
 
-      {dashboardTab === 'discover' && (
-  <div>
-    <h3 className="text-sm font-bold text-gray-700 mb-3">DISCOVER</h3>
-    <div className="space-y-3">
-      {getDiscoverUsers().slice(0, 8).map(person => (
-        <div key={person.id} className="bg-white rounded-xl shadow-sm p-4 flex items-center justify-between">
-          <div 
-            onClick={() => setSelectedUserProfile(person)}
-            className="flex items-center gap-3 flex-1 cursor-pointer"
-          >
-            <div className="w-12 h-12 rounded-full bg-purple-500 text-white flex items-center justify-center font-semibold">
-              {getInitials(person.name)}
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+                <Users className="w-5 h-5 text-purple-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800">See your friends who are around</h3>
+                <p className="text-sm text-gray-600">Real-time campus presence</p>
+              </div>
             </div>
-            <div>
-              <div className="font-semibold text-gray-800">{person.name}</div>
-              <div className="text-sm text-gray-600">{person.year} • {person.program}</div>
-              {person.isOnCampus && (
-                <div className="text-sm text-green-600 flex items-center gap-1 mt-1">
-                  <MapPin className="w-4 h-4" />
-                  On campus now
-                </div>
-              )}
+
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center flex-shrink-0">
+                <Coffee className="w-5 h-5 text-pink-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800">Send quick invites to meet up</h3>
+                <p className="text-sm text-gray-600">Study, coffee, gym, or just hang out</p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                <Check className="w-5 h-5 text-green-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800">TMU students only</h3>
+                <p className="text-sm text-gray-600">Verified @torontomu.ca emails</p>
+              </div>
             </div>
           </div>
-          <button 
-            onClick={() => handleSendRequest(person.id)}
-            className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition flex items-center gap-1"
+
+          <button
+            onClick={() => setShowWelcome(false)}
+            className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-4 rounded-xl font-bold text-lg hover:shadow-lg transition transform hover:scale-105"
           >
-            <UserPlus className="w-4 h-4" />
-            Connect
+            Get Started →
           </button>
         </div>
-      ))}
-    </div>
-  </div>
-)}
-  </div>
-  );
-
-  const renderFriends = () => (
-    <div>
-      <div className="flex gap-4 mb-4 border-b overflow-x-auto">
-        <button
-          onClick={() => setFriendsTab('connections')}
-          className={'pb-3 px-2 font-medium transition whitespace-nowrap ' + (friendsTab === 'connections' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-gray-600')}
-        >
-          Connections ({myConnections.length})
-        </button>
-        <button
-          onClick={() => setFriendsTab('requests')}
-          className={'pb-3 px-2 font-medium transition whitespace-nowrap ' + (friendsTab === 'requests' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-gray-600')}
-        >
-          Requests ({pendingIncoming.length})
-        </button>
-        <button
-          onClick={() => setFriendsTab('pending')}
-          className={'pb-3 px-2 font-medium transition whitespace-nowrap ' + (friendsTab === 'pending' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-gray-600')}
-        >
-          Pending ({pendingOutgoing.length})
-        </button>
-        <button
-          onClick={() => setFriendsTab('invites')}
-          className={'pb-3 px-2 font-medium transition whitespace-nowrap ' + (friendsTab === 'invites' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-gray-600')}
-        >
-          Invites ({invites.received.length})
-        </button>
       </div>
+    );
+  }
 
-      {friendsTab === 'connections' && (
-        <div className="space-y-3">
-          {myConnections.map(userId => {
-            const person = getUserById(userId);
-            if (!person) return null;
-            return (
-              <div key={userId} className="bg-white rounded-xl shadow-sm p-4 flex items-center justify-between">
-                <div 
-                  onClick={() => setSelectedUserProfile(person)}
-                  className="flex items-center gap-3 flex-1 cursor-pointer"
-                >
-                  <div className="w-12 h-12 rounded-full bg-blue-500 text-white flex items-center justify-center font-semibold">
-                    {getInitials(person.name)}
-                  </div>
-                  <div>
-                    <div className="font-semibold text-gray-800">{person.name}</div>
-                    <div className="text-sm text-gray-600">@{person.username}</div>
-                    <div className="text-sm text-gray-500 mt-1">✓ Connected</div>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => handleRemoveConnection(userId)}
-                  className="text-red-500 px-4 py-2 rounded-lg hover:bg-red-50 transition"
-                >
-                  Remove
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {friendsTab === 'requests' && (
-        <div className="space-y-3">
-          {pendingIncoming.length === 0 ? (
-            <div className="bg-white rounded-xl p-8 text-center">
-              <p className="text-gray-600">No pending requests</p>
+  // AUTH PAGE
+  if (page === 'auth') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8">
+          <div className="text-center mb-8">
+            <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+              <Users className="w-12 h-12 text-white" />
             </div>
-          ) : (
-            pendingIncoming.map(userId => {
-              const person = getUserById(userId);
-              if (!person) return null;
-              return (
-                <div key={userId} className="bg-white rounded-xl shadow-sm p-4 flex items-center justify-between">
-                  <div 
-                    onClick={() => setSelectedUserProfile(person)}
-                    className="flex items-center gap-3 flex-1 cursor-pointer"
-                  >
-                    <div className="w-12 h-12 rounded-full bg-blue-500 text-white flex items-center justify-center font-semibold">
-                      {getInitials(person.name)}
-                    </div>
-                    <div>
-                      <div className="font-semibold text-gray-800">{person.name}</div>
-                      <div className="text-sm text-gray-600">{person.year} • {person.program}</div>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={() => handleAcceptRequest(userId)}
-                      className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition"
-                    >
-                      Accept
-                    </button>
-                    <button 
-                      onClick={() => handleDeclineRequest(userId)}
-                      className="text-gray-500 px-4 py-2 rounded-lg hover:bg-gray-100 transition"
-                    >
-                      Decline
-                    </button>
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-      )}
-
-      {friendsTab === 'pending' && (
-        <div className="space-y-3">
-          {pendingOutgoing.length === 0 ? (
-            <div className="bg-white rounded-xl p-8 text-center">
-              <p className="text-gray-600">No pending requests</p>
-            </div>
-          ) : (
-            pendingOutgoing.map(userId => {
-              const person = getUserById(userId);
-              if (!person) return null;
-              return (
-                <div key={userId} className="bg-white rounded-xl shadow-sm p-4 flex items-center justify-between">
-                  <div 
-                    onClick={() => setSelectedUserProfile(person)}
-                    className="flex items-center gap-3 flex-1 cursor-pointer"
-                  >
-                    <div className="w-12 h-12 rounded-full bg-blue-500 text-white flex items-center justify-center font-semibold">
-                      {getInitials(person.name)}
-                    </div>
-                    <div>
-                      <div className="font-semibold text-gray-800">{person.name}</div>
-                      <div className="text-sm text-gray-600">@{person.username}</div>
-                      <div className="text-sm text-yellow-600 mt-1">⏳ Pending</div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-      )}
-
-      {friendsTab === 'invites' && (
-        <div>
-          <div className="flex gap-4 mb-4 border-b">
-            <button
-              onClick={() => setInvitesTab('received')}
-              className={'pb-3 px-2 font-medium transition ' + (invitesTab === 'received' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-gray-600')}
-            >
-              Received ({invites.received.length})
-            </button>
-            <button
-              onClick={() => setInvitesTab('sent')}
-              className={'pb-3 px-2 font-medium transition ' + (invitesTab === 'sent' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-gray-600')}
-            >
-              Sent ({invites.sent.length})
-            </button>
-            <button
-              onClick={() => setInvitesTab('upcoming')}
-              className={'pb-3 px-2 font-medium transition ' + (invitesTab === 'upcoming' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-gray-600')}
-            >
-              Upcoming ({invites.upcoming.length})
-            </button>
+            <h1 className="text-3xl font-bold text-gray-800 mb-2">Sign In</h1>
+            <p className="text-gray-600">Enter your TMU email to continue</p>
           </div>
 
-          {invitesTab === 'received' && (
-            <div className="space-y-3">
-              {invites.received.length === 0 ? (
-                <div className="bg-white rounded-xl p-8 text-center">
-                  <p className="text-gray-600">No pending invites</p>
+          {!awaitingVerification ? (
+            <div>
+              <div className="mb-6">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">TMU Email</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="firstname.lastname"
+                    value={email.replace('@torontomu.ca', '')}
+                    onChange={(e) => setEmail(e.target.value + '@torontomu.ca')}
+                    className="w-full px-4 py-3 pr-32 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  />
+                  <div className="absolute right-4 top-3 text-sm text-gray-400">@torontomu.ca</div>
                 </div>
-              ) : (
-                invites.received.map(invite => {
-                  const person = getUserById(invite.from);
-                  return (
-                    <div key={invite.id} className="bg-white rounded-xl shadow-sm p-4">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-full bg-blue-500 text-white flex items-center justify-center font-semibold text-sm">
-                          {getInitials(person?.name || 'U')}
-                        </div>
-                        <div>
-                          <div className="font-semibold text-gray-800">{person?.name}</div>
-                          <div className="text-sm text-gray-600">wants to {invite.activity.toLowerCase()}</div>
-                        </div>
-                      </div>
-                      <div className="text-sm text-gray-600 mb-3">
-                        <div>📍 {invite.location}</div>
-                        <div className="text-gray-500 mt-1">Just now</div>
-                      </div>
-                      <div className="flex gap-2">
-                        <button 
-                          onClick={() => handleInviteResponse(invite.id, 'accepted')}
-                          className="flex-1 bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 transition"
-                        >
-                          Accept
-                        </button>
-                        <button 
-                          onClick={() => handleInviteResponse(invite.id, 'declined')}
-                          className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300 transition"
-                        >
-                          Decline
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
+              </div>
+              {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+              <button
+                onClick={handleAuth}
+                className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-4 rounded-xl font-bold text-lg hover:shadow-lg transition"
+              >
+                Continue →
+              </button>
             </div>
-          )}
-
-          {invitesTab === 'sent' && (
-            <div className="space-y-3">
-              {invites.sent.map(invite => {
-                const person = getUserById(invite.to);
-                return (
-                  <div key={invite.id} className="bg-white rounded-xl shadow-sm p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-blue-500 text-white flex items-center justify-center font-semibold text-sm">
-                          {getInitials(person?.name || 'U')}
-                        </div>
-                        <div>
-                          <div className="font-semibold text-gray-800">You → {person?.name}</div>
-                          <div className="text-sm text-gray-600">{invite.activity} • {invite.location}</div>
-                        </div>
-                      </div>
-                      <div className="text-sm text-yellow-600">⏳ Pending</div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {invitesTab === 'upcoming' && (
-            <div className="space-y-3">
-              {invites.upcoming.map(invite => {
-                const person = getUserById(invite.from === user.id ? invite.to : invite.from);
-                return (
-                  <div key={invite.id} className="bg-white rounded-xl shadow-sm p-4">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-10 h-10 rounded-full bg-blue-500 text-white flex items-center justify-center font-semibold text-sm">
-                        {getInitials(person?.name || 'U')}
-                      </div>
-                      <div>
-                        <div className="font-semibold text-gray-800">{invite.activity} with {person?.name}</div>
-                        <div className="text-sm text-gray-600">📍 {invite.location}</div>
-                      </div>
-                    </div>
-                    <button className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition">
-                      I'm Here
-                    </button>
-                  </div>
-                );
-              })}
+          ) : (
+            <div>
+              <p className="text-gray-600 mb-4 text-center">
+                We sent a code to <span className="font-semibold">{email}</span>
+              </p>
+              <input
+                type="text"
+                placeholder="000000"
+                maxLength="6"
+                value={verificationCode}
+                onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
+                className="w-full px-4 py-4 border-2 border-gray-200 rounded-xl mb-4 text-center text-3xl tracking-widest font-bold focus:ring-2 focus:ring-blue-500"
+              />
+              {error && <p className="text-red-500 text-sm mb-4 text-center">{error}</p>}
+              <button
+                onClick={verifyCode}
+                className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-4 rounded-xl font-bold text-lg hover:shadow-lg transition"
+              >
+                Verify & Continue
+              </button>
             </div>
           )}
         </div>
-      )}
-    </div>
-  );
+      </div>
+    );
+  }
 
-  const renderProfile = () => (
+  // USERNAME PAGE
+  if (page === 'username') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8">
+          <h2 className="text-3xl font-bold text-gray-800 mb-2">Pick your username</h2>
+          <p className="text-gray-600 mb-6">This is how others will find you</p>
+          
+          <div className="space-y-3 mb-6">
+            {usernameOptions.map(option => (
+              <label key={option} className="flex items-center p-4 border-2 rounded-xl cursor-pointer hover:bg-blue-50 hover:border-blue-500 transition">
+                <input
+                  type="radio"
+                  name="username"
+                  value={option}
+                  checked={selectedUsername === option}
+                  onChange={(e) => setSelectedUsername(e.target.value)}
+                  className="mr-3 w-5 h-5"
+                />
+                <span className="font-semibold text-lg">@{option}</span>
+              </label>
+            ))}
+            
+            <label className="flex items-center p-4 border-2 rounded-xl cursor-pointer hover:bg-blue-50 hover:border-blue-500 transition">
+              <input
+                type="radio"
+                name="username"
+                value="custom"
+                checked={selectedUsername === 'custom'}
+                onChange={(e) => setSelectedUsername(e.target.value)}
+                className="mr-3 w-5 h-5"
+              />
+              <span className="font-semibold">Custom:</span>
+              {selectedUsername === 'custom' && (
+                <input
+                  type="text"
+                  value={customUsername}
+                  onChange={(e) => setCustomUsername(e.target.value.toLowerCase().replace(/[^a-z0-9._]/g, ''))}
+                  placeholder="your_username"
+                  className="ml-2 flex-1 px-3 py-2 border-2 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  autoFocus
+                />
+              )}
+            </label>
+          </div>
+          
+          {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+          
+          <button
+            onClick={handleUsernameSelection}
+            className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-4 rounded-xl font-bold text-lg hover:shadow-lg transition"
+          >
+            Continue →
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ONBOARDING PAGE
+  if (page === 'onboarding') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 max-h-screen overflow-y-auto">
+          <h2 className="text-3xl font-bold text-gray-800 mb-2">Complete Your Profile</h2>
+          <p className="text-gray-600 mb-6">Just a few quick details</p>
+          
+          <div className="mb-6">
+            <label className="block text-sm font-semibold text-gray-700 mb-3">Profile Photo</label>
+            <div className="flex items-center gap-4">
+              {profile.photoUrl ? (
+                <img src={profile.photoUrl} alt="Profile" className="w-24 h-24 rounded-full object-cover border-4 border-blue-100" />
+              ) : (
+                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                  <Users className="w-12 h-12 text-white" />
+                </div>
+              )}
+              <label className="cursor-pointer bg-blue-500 text-white px-6 py-3 rounded-xl hover:bg-blue-600 transition font-semibold">
+                {profile.photoUrl ? 'Change' : 'Upload'}
+                <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
+              </label>
+            </div>
+          </div>
+          
+          <input
+            type="text"
+            placeholder="Full Name"
+            value={profile.name}
+            onChange={(e) => setProfile({...profile, name: e.target.value})}
+            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl mb-4 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+          
+          <select
+            value={profile.year}
+            onChange={(e) => setProfile({...profile, year: e.target.value})}
+            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl mb-4 focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Select Year</option>
+            {yearOptions.map(year => (
+              <option key={year} value={year}>{year}</option>
+            ))}
+          </select>
+          
+          {profile.year === 'Other' && (
+            <input
+              type="text"
+              placeholder="Enter your year"
+              onChange={(e) => setProfile({...profile, year: e.target.value})}
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl mb-4 focus:ring-2 focus:ring-blue-500"
+            />
+          )}
+          
+          <select
+            value={profile.program}
+            onChange={(e) => setProfile({...profile, program: e.target.value})}
+            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl mb-4 focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Select Program</option>
+            {tmuPrograms.map(program => (
+              <option key={program} value={program}>{program}</option>
+            ))}
+          </select>
+          
+          <select
+            value={profile.gender}
+            onChange={(e) => setProfile({...profile, gender: e.target.value})}
+            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl mb-6 focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Select Gender</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Non-binary">Non-binary</option>
+            <option value="Prefer not to say">Prefer not to say</option>
+          </select>
+          
+          {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+          
+          <button
+            onClick={completeOnboarding}
+            className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-4 rounded-xl font-bold text-lg hover:shadow-lg transition"
+          >
+            Let's Go! 🎉
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // TUTORIAL SCREENS
+  if (showTutorial) {
+    const tutorials = [
+      {
+        icon: MapPin,
+        title: "We'll detect when you're on campus",
+        description: "Campus Connect automatically knows when you're at TMU. No manual check-ins needed!",
+        color: "from-blue-500 to-blue-600"
+      },
+      {
+        icon: Users,
+        title: "See your friends who are around",
+        description: "Check who's on campus right now and send them a quick invite to meet up.",
+        color: "from-purple-500 to-purple-600"
+      },
+      {
+        icon: Coffee,
+        title: "Send quick invites",
+        description: "Invite friends to study, grab coffee, hit the gym, or just hang out. It's that simple!",
+        color: "from-pink-500 to-pink-600"
+      },
+      {
+        icon: Search,
+        title: "Discover new people",
+        description: "Find and connect with other TMU students based on your program, year, and interests.",
+        color: "from-green-500 to-green-600"
+      }
+    ];
+
+    const currentTutorial = tutorials[tutorialStep];
+    const Icon = currentTutorial.icon;
+
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8">
+          <div className="text-center mb-8">
+            <div className={`w-24 h-24 bg-gradient-to-br ${currentTutorial.color} rounded-full flex items-center justify-center mx-auto mb-6`}>
+              <Icon className="w-14 h-14 text-white" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-3">{currentTutorial.title}</h2>
+            <p className="text-gray-600 text-lg">{currentTutorial.description}</p>
+          </div>
+
+          <div className="flex justify-center gap-2 mb-8">
+            {tutorials.map((_, index) => (
+              <div
+                key={index}
+                className={`h-2 rounded-full transition-all ${
+                  index === tutorialStep ? 'w-8 bg-blue-500' : 'w-2 bg-gray-300'
+                }`}
+              />
+            ))}
+          </div>
+
+          <div className="flex gap-3">
+            {tutorialStep < tutorials.length - 1 ? (
+              <>
+                <button
+                  onClick={completeTutorial}
+                  className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-200 transition"
+                >
+                  Skip
+                </button>
+                <button
+                  onClick={() => setTutorialStep(tutorialStep + 1)}
+                  className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition"
+                >
+                  Next
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={completeTutorial}
+                className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition"
+              >
+                Start Exploring! 🚀
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+const renderProfile = () => (
     <div className="space-y-4">
       <div className="bg-white rounded-xl shadow-sm p-6 text-center">
         {profile.photoUrl ? (
@@ -998,7 +1171,7 @@ const CampusConnect = () => {
         <div className="grid grid-cols-2 gap-4 text-center">
           <div>
             <div className="text-2xl font-bold text-blue-500">{myConnections.length}</div>
-            <div className="text-sm text-gray-600">Connections</div>
+            <div className="text-sm text-gray-600">Friends</div>
           </div>
           <div>
             <div className="text-2xl font-bold text-blue-500">{invites.upcoming.length}</div>
@@ -1036,7 +1209,8 @@ const CampusConnect = () => {
       </div>
     </div>
   );
-// MAIN APP LAYOUT
+
+  // MAIN APP LAYOUT
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       <div className="bg-white border-b sticky top-0 z-10">
@@ -1058,19 +1232,19 @@ const CampusConnect = () => {
       </div>
 
       <div className="max-w-4xl mx-auto p-4">
-        {currentTab === 'dashboard' && (
+        {currentTab === 'home' && (
           <button
             onClick={toggleCampusMode}
             className="w-full bg-white rounded-xl shadow-sm p-6 mb-4 hover:shadow-md transition cursor-pointer"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className={'w-16 h-16 rounded-full flex items-center justify-center ' + (isOnCampus ? 'bg-green-100' : campusMode === 'manual' ? 'bg-gray-100' : 'bg-gray-100')}>
+                <div className={'w-16 h-16 rounded-full flex items-center justify-center ' + (isOnCampus ? 'bg-green-100' : 'bg-gray-100')}>
                   <MapPin className={'w-8 h-8 ' + (isOnCampus ? 'text-green-600' : 'text-gray-600')} />
                 </div>
                 <div className="text-left">
                   <h3 className={'text-xl font-bold ' + (isOnCampus ? 'text-green-600' : 'text-gray-800')}>
-                    {isOnCampus ? 'On TMU Campus' : campusMode === 'manual' ? 'Off Campus' : 'Off Campus'}
+                    {isOnCampus ? 'On TMU Campus' : 'Off Campus'}
                   </h3>
                   <p className="text-sm text-gray-600">
                     {campusMode === 'manual' ? 'Manual override' : 'Auto-tracking'}
@@ -1085,26 +1259,37 @@ const CampusConnect = () => {
           </button>
         )}
 
-        {currentTab === 'dashboard' && renderDashboard()}
+        {currentTab === 'home' && renderHome()}
         {currentTab === 'friends' && renderFriends()}
         {currentTab === 'profile' && renderProfile()}
       </div>
 
+      {/* Bottom Navigation */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t">
         <div className="max-w-4xl mx-auto px-4 py-3 flex justify-around">
           <button
-            onClick={() => setCurrentTab('dashboard')}
-            className={'flex flex-col items-center gap-1 ' + (currentTab === 'dashboard' ? 'text-blue-500' : 'text-gray-600')}
+            onClick={() => setCurrentTab('home')}
+            className={'flex flex-col items-center gap-1 ' + (currentTab === 'home' ? 'text-blue-500' : 'text-gray-600')}
           >
-            <Users className="w-6 h-6" />
-            <span className="text-xs font-medium">Dashboard</span>
+            <MapPin className="w-6 h-6" />
+            <span className="text-xs font-medium">Home</span>
+            {invites.received.length > 0 && (
+              <div className="absolute top-1 right-1/3 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                {invites.received.length}
+              </div>
+            )}
           </button>
           <button
             onClick={() => setCurrentTab('friends')}
-            className={'flex flex-col items-center gap-1 ' + (currentTab === 'friends' ? 'text-blue-500' : 'text-gray-600')}
+            className={'flex flex-col items-center gap-1 relative ' + (currentTab === 'friends' ? 'text-blue-500' : 'text-gray-600')}
           >
-            <UserPlus className="w-6 h-6" />
+            <Users className="w-6 h-6" />
             <span className="text-xs font-medium">Friends</span>
+            {pendingIncoming.length > 0 && (
+              <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                {pendingIncoming.length}
+              </div>
+            )}
           </button>
           <button
             onClick={() => setCurrentTab('profile')}
@@ -1118,6 +1303,7 @@ const CampusConnect = () => {
         </div>
       </div>
 
+      {/* Invite Modal */}
       {showInviteModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 max-h-[80vh] overflow-y-auto">
@@ -1216,6 +1402,7 @@ const CampusConnect = () => {
         </div>
       )}
 
+      {/* User Profile Modal */}
       {selectedUserProfile && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl max-w-md w-full p-6">
@@ -1263,16 +1450,9 @@ const CampusConnect = () => {
                     }}
                     className="w-full bg-red-50 text-red-500 py-3 rounded-xl font-semibold hover:bg-red-100 transition"
                   >
-                    Remove Connection
+                    Remove Friend
                   </button>
                 </>
-              ) : pendingOutgoing.includes(selectedUserProfile.id) ? (
-                <button
-                  disabled
-                  className="w-full bg-gray-100 text-gray-500 py-3 rounded-xl font-semibold cursor-not-allowed"
-                >
-                  Request Pending
-                </button>
               ) : pendingIncoming.includes(selectedUserProfile.id) ? (
                 <div className="flex gap-2">
                   <button
@@ -1302,7 +1482,7 @@ const CampusConnect = () => {
                   }}
                   className="w-full bg-blue-500 text-white py-3 rounded-xl font-semibold hover:bg-blue-600 transition"
                 >
-                  Send Connection Request
+                  Send Friend Request
                 </button>
               )}
             </div>
