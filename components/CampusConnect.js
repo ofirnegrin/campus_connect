@@ -1071,7 +1071,7 @@ useEffect(() => {
       {
         icon: MapPin,
         title: "We'll detect when you're on campus",
-        description: "Campus Connect automatically knows when you're at TMU. No manual check-ins needed!",
+        description: "Campus Connect automatically checks if you’re near TMU to know when you’re on campus. Your exact location is never tracked or stored.",
         color: "from-blue-500 to-blue-600"
       },
       {
