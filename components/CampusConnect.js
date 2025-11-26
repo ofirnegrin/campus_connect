@@ -1209,8 +1209,7 @@ const getTimeSlots = () => {
         </div>
       </div>
     );
-  }
-// HOME TAB RENDER
+  }// HOME TAB RENDER
   const renderHome = () => (
     <div>
       {/* Active Invites Section */}
@@ -1226,13 +1225,21 @@ const getTimeSlots = () => {
               return (
                 <div key={invite.id} className="bg-white rounded-xl shadow-sm p-4">
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 rounded-full bg-blue-500 text-white flex items-center justify-center font-semibold text-sm">
-                      {getInitials(person?.name || 'U')}
+                    <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-blue-500">
+                      {person?.photoUrl ? (
+                        <img src={person.photoUrl} alt={person.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full bg-blue-500 text-white flex items-center justify-center font-semibold">
+                          {getInitials(person?.name || 'U')}
+                        </div>
+                      )}
                     </div>
                     <div className="flex-1">
                       <div className="font-semibold text-gray-800">{person?.name}</div>
-                      <div className="text-sm text-gray-600">wants to {invite.activity.toLowerCase()}</div>
+                      <div className="text-sm text-gray-600">wants to {invite.activity?.toLowerCase()}</div>
                       <div className="text-sm text-gray-500">📍 {invite.location}</div>
+                      {invite.time && <div className="text-sm text-gray-500">🕐 {invite.time}</div>}
+                      {invite.note && <div className="text-sm text-gray-600 italic mt-1">"{invite.note}"</div>}
                     </div>
                   </div>
                   <div className="flex gap-2">
@@ -1263,14 +1270,6 @@ const getTimeSlots = () => {
             <div className="w-3 h-3 bg-green-500 rounded-full"></div>
             ON CAMPUS NOW ({getOnCampusConnections().length})
           </span>
-          {selectedPeople.length > 0 && (
-            <button
-              onClick={openInviteModal}
-              className="text-sm bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-600 transition"
-            >
-              Invite ({selectedPeople.length})
-            </button>
-          )}
         </h3>
         
         {getOnCampusConnections().length === 0 ? (
@@ -1281,89 +1280,124 @@ const getTimeSlots = () => {
           </div>
         ) : (
           <div className="space-y-2">
-            {getOnCampusConnections().map(person => (
-              <div key={person.id} className="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition">
-                <input
-                  type="checkbox"
-                  checked={selectedPeople.includes(person.id)}
-                  onChange={() => togglePersonSelection(person.id)}
-                  disabled={!isOnCampus}
-                  className={'w-5 h-5 rounded cursor-pointer ' + (isOnCampus ? 'text-blue-500' : 'text-gray-300 cursor-not-allowed')}
-                />
+            {getOnCampusConnections().map(person => {
+              const isSelected = selectedPeople.includes(person.id);
+              return (
                 <div 
-                  onClick={() => setSelectedUserProfile(person)}
-                  className="flex items-center gap-3 flex-1 cursor-pointer"
+                  key={person.id} 
+                  className={'flex items-center gap-3 p-3 rounded-lg transition cursor-pointer ' + (isSelected ? 'bg-blue-50 border-2 border-blue-500' : 'hover:bg-gray-50 border-2 border-transparent')}
+                  onClick={() => isOnCampus && togglePersonSelection(person.id)}
                 >
-                  <div className="w-12 h-12 rounded-full bg-blue-500 text-white flex items-center justify-center font-semibold">
-                    {getInitials(person.name)}
+                  <div className={'w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ' + (isSelected ? 'border-blue-500 bg-blue-500' : 'border-gray-300')}>
+                    {isSelected && <Check className="w-4 h-4 text-white" />}
                   </div>
-                  <div>
+                  <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-blue-200 flex-shrink-0">
+                    {person.photoUrl ? (
+                      <img src={person.photoUrl} alt={person.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-blue-500 text-white flex items-center justify-center font-semibold">
+                        {getInitials(person.name)}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1">
                     <div className="font-semibold text-gray-800">{person.name}</div>
                     <div className="text-sm text-gray-600">@{person.username}</div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
 
-      {/* Sent/Upcoming Invites */}
-      {(invites.sent.length > 0 || invites.upcoming.length > 0) && (
-        <div className="bg-white rounded-xl shadow-sm p-4">
-          <h3 className="font-bold text-gray-800 mb-3">YOUR INVITES</h3>
-          
-          {invites.sent.length > 0 && (
-            <div className="mb-4">
-              <h4 className="text-sm font-semibold text-gray-600 mb-2">Sent ({invites.sent.length})</h4>
-              <div className="space-y-2">
-                {invites.sent.map(invite => {
-                  const person = getUserById(invite.to);
-                  return (
-                    <div key={invite.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-blue-500 text-white flex items-center justify-center font-semibold text-sm">
-                          {getInitials(person?.name || 'U')}
-                        </div>
-                        <div>
-                          <div className="font-medium text-gray-800">You → {person?.name}</div>
-                          <div className="text-sm text-gray-600">{invite.activity} • {invite.location}</div>
-                        </div>
-                      </div>
-                      <div className="text-sm text-yellow-600 font-medium">⏳ Pending</div>
+      {/* Sent Invites - Group Display */}
+      {invites.sent.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm p-4 mb-4">
+          <h3 className="font-bold text-gray-800 mb-3">SENT INVITES</h3>
+          <div className="space-y-3">
+            {invites.sent.map(invite => {
+              const acceptedCount = Object.values(invite.acceptances || {}).filter(status => status === 'accepted').length;
+              const totalCount = invite.toUsers?.length || 0;
+              
+              return (
+                <div key={invite.id} className="border-2 border-gray-200 rounded-xl p-4">
+                  <div className="mb-3">
+                    <div className="font-bold text-gray-800">{invite.activity} at {invite.location}</div>
+                    <div className="text-sm text-gray-600">🕐 {invite.time}</div>
+                    {invite.note && <div className="text-sm text-gray-600 italic mt-1">"{invite.note}"</div>}
+                    <div className="text-sm font-medium text-blue-600 mt-2">
+                      Invited {totalCount} {totalCount === 1 ? 'person' : 'people'} • {acceptedCount}/{totalCount} accepted
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    {invite.toUsers?.map(userId => {
+                      const person = getUserById(userId);
+                      const status = invite.acceptances?.[userId] || 'pending';
+                      
+                      return (
+                        <div key={userId} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-gray-200">
+                              {person?.photoUrl ? (
+                                <img src={person.photoUrl} alt={person.name} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full bg-blue-500 text-white flex items-center justify-center font-semibold text-sm">
+                                  {getInitials(person?.name || 'U')}
+                                </div>
+                              )}
+                            </div>
+                            <div className="font-medium text-gray-800">{person?.name}</div>
+                          </div>
+                          <div className={'text-sm font-semibold ' + (status === 'accepted' ? 'text-green-600' : status === 'declined' ? 'text-red-600' : 'text-yellow-600')}>
+                            {status === 'accepted' && '✅ Accepted'}
+                            {status === 'declined' && '❌ Declined'}
+                            {status === 'pending' && '⏳ Pending'}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
-          {invites.upcoming.length > 0 && (
-            <div>
-              <h4 className="text-sm font-semibold text-gray-600 mb-2">Upcoming ({invites.upcoming.length})</h4>
-              <div className="space-y-2">
-                {invites.upcoming.map(invite => {
-                  const person = getUserById(invite.from === user.id ? invite.to : invite.from);
-                  return (
-                    <div key={invite.id} className="p-3 bg-green-50 rounded-lg border border-green-200">
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 rounded-full bg-green-500 text-white flex items-center justify-center font-semibold text-sm">
+      {/* Upcoming Invites */}
+      {invites.upcoming.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm p-4">
+          <h3 className="font-bold text-gray-800 mb-3">UPCOMING</h3>
+          <div className="space-y-2">
+            {invites.upcoming.map(invite => {
+              const person = getUserById(invite.from === user.id ? invite.to : invite.from);
+              return (
+                <div key={invite.id} className="p-3 bg-green-50 rounded-lg border border-green-200">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-green-500">
+                      {person?.photoUrl ? (
+                        <img src={person.photoUrl} alt={person.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full bg-green-500 text-white flex items-center justify-center font-semibold text-sm">
                           {getInitials(person?.name || 'U')}
                         </div>
-                        <div>
-                          <div className="font-semibold text-gray-800">{invite.activity} with {person?.name}</div>
-                          <div className="text-sm text-gray-600">📍 {invite.location}</div>
-                        </div>
-                      </div>
-                      <button className="w-full bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 transition font-semibold">
-                        I'm Here
-                      </button>
+                      )}
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+                    <div>
+                      <div className="font-semibold text-gray-800">{invite.activity} with {person?.name}</div>
+                      <div className="text-sm text-gray-600">📍 {invite.location}</div>
+                      {invite.time && <div className="text-sm text-gray-600">🕐 {invite.time}</div>}
+                    </div>
+                  </div>
+                  <button className="w-full bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 transition font-semibold">
+                    I'm Here
+                  </button>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
