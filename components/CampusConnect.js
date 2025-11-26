@@ -43,7 +43,8 @@ const CampusConnect = () => {
   const [selectedUsername, setSelectedUsername] = useState('');
   const [customUsername, setCustomUsername] = useState('');
   const [profile, setProfile] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     year: '',
     program: '',
     gender: '',
@@ -69,6 +70,9 @@ const CampusConnect = () => {
   const [selectedFloor, setSelectedFloor] = useState('');
   const [customLocation, setCustomLocation] = useState('');
   const [selectedUserProfile, setSelectedUserProfile] = useState(null);
+  const [inviteTime, setInviteTime] = useState('now');
+  const [customTime, setCustomTime] = useState('');
+  const [inviteNote, setInviteNote] = useState('');
 
   const activities = [
     { label: 'Study', icon: BookOpen, value: 'study' },
@@ -158,26 +162,29 @@ useEffect(() => {
     return R * c;
   };
 
-  const toggleCampusMode = () => {
+const toggleCampusMode = () => {
     if (campusMode === 'auto' && isOnCampus) {
+      // User is on campus (auto-detected) → Switch to Manual Off
       setCampusMode('manual');
       setManuallyOff(true);
       setIsOnCampus(false);
-    } else {
+    } else if (campusMode === 'manual') {
+      // User is Manual Off → Switch back to Auto
       setCampusMode('auto');
       setManuallyOff(false);
-      checkLocation();
+      checkLocation(); // Will auto-detect campus status
     }
+    // If auto and off campus, do nothing (can't manually set to on campus)
   };
 
-  const loadMockData = () => {
+const loadMockData = () => {
     const mockUsers = [
-      { id: '1', username: 'john.smith', name: 'John Smith', year: '3rd Year', program: 'Computer Science', gender: 'Male', photoUrl: '', isOnCampus: true },
-      { id: '2', username: 'sarah.wilson', name: 'Sarah Wilson', year: '3rd Year', program: 'Computer Science', gender: 'Female', photoUrl: '', isOnCampus: true },
-      { id: '3', username: 'marcus.patel', name: 'Marcus Patel', year: '2nd Year', program: 'Business Management', gender: 'Male', photoUrl: '', isOnCampus: false },
-      { id: '4', username: 'priya.chen', name: 'Priya Chen', year: '4th Year', program: 'Engineering', gender: 'Female', photoUrl: '', isOnCampus: false },
-      { id: '5', username: 'alex.kumar', name: 'Alex Kumar', year: '3rd Year', program: 'Computer Science', gender: 'Male', photoUrl: '', isOnCampus: true },
-      { id: '6', username: 'lisa.zhang', name: 'Lisa Zhang', year: '3rd Year', program: 'Engineering', gender: 'Female', photoUrl: '', isOnCampus: false }
+      { id: '1', username: 'john.smith', name: 'John Smith', firstName: 'John', lastName: 'Smith', year: '3rd Year', program: 'Computer Science', gender: 'Male', photoUrl: '', isOnCampus: true },
+      { id: '2', username: 'sarah.wilson', name: 'Sarah Wilson', firstName: 'Sarah', lastName: 'Wilson', year: '3rd Year', program: 'Computer Science', gender: 'Female', photoUrl: '', isOnCampus: true },
+      { id: '3', username: 'marcus.patel', name: 'Marcus Patel', firstName: 'Marcus', lastName: 'Patel', year: '2nd Year', program: 'Business Management', gender: 'Male', photoUrl: '', isOnCampus: false },
+      { id: '4', username: 'priya.chen', name: 'Priya Chen', firstName: 'Priya', lastName: 'Chen', year: '4th Year', program: 'Engineering', gender: 'Female', photoUrl: '', isOnCampus: false },
+      { id: '5', username: 'alex.kumar', name: 'Alex Kumar', firstName: 'Alex', lastName: 'Kumar', year: '3rd Year', program: 'Computer Science', gender: 'Male', photoUrl: '', isOnCampus: true },
+      { id: '6', username: 'lisa.zhang', name: 'Lisa Zhang', firstName: 'Lisa', lastName: 'Zhang', year: '3rd Year', program: 'Engineering', gender: 'Female', photoUrl: '', isOnCampus: false }
     ];
     setAllUsers(mockUsers);
   };
@@ -268,13 +275,17 @@ useEffect(() => {
     }
   };
 
-  const completeOnboarding = () => {
-    if (!profile.name || !profile.year || !profile.program || !profile.gender || !profile.photoUrl) {
+const completeOnboarding = () => {
+    if (!profile.firstName || !profile.lastName || !profile.year || !profile.program || !profile.gender || !profile.photoUrl) {
       setError('Please complete all fields and upload a photo');
       return;
     }
     
-    const completeUser = { ...user, ...profile };
+    const completeUser = { 
+      ...user, 
+      ...profile,
+      name: profile.firstName + ' ' + profile.lastName // Combined for display/search
+    };
     localStorage.setItem('cc_user', JSON.stringify(completeUser));
     setUser(completeUser);
     setShowTutorial(true);
@@ -329,7 +340,7 @@ useEffect(() => {
     setShowInviteModal(true);
   };
 
-  const sendInvites = () => {
+const sendInvites = () => {
     const activity = selectedActivity === 'other' ? customActivity : activities.find(a => a.value === selectedActivity)?.label;
     let locationStr = selectedLocation;
     
@@ -340,19 +351,34 @@ useEffect(() => {
       locationStr = customLocation;
     }
     
-    const newSentInvites = selectedPeople.map(personId => ({
+    // Determine time display
+    let timeDisplay = 'Right Now';
+    if (inviteTime === '30min') timeDisplay = 'In 30 Minutes';
+    else if (inviteTime === '1hour') timeDisplay = 'In 1 Hour';
+    else if (inviteTime === 'custom') timeDisplay = customTime;
+    
+    // Create single group invite
+    const groupInvite = {
       id: Math.random().toString(36).substr(2, 9),
       from: user.id,
-      to: personId,
+      toUsers: selectedPeople, // Array of user IDs
       activity,
       location: locationStr,
+      time: timeDisplay,
+      note: inviteNote,
       status: 'pending',
+      acceptances: {}, // Track individual acceptances: { userId: 'accepted'/'declined'/'pending' }
       timestamp: Date.now()
-    }));
+    };
+    
+    // Initialize all as pending
+    selectedPeople.forEach(personId => {
+      groupInvite.acceptances[personId] = 'pending';
+    });
     
     const updatedInvites = {
       ...invites,
-      sent: [...invites.sent, ...newSentInvites]
+      sent: [...invites.sent, groupInvite]
     };
     
     setInvites(updatedInvites);
@@ -362,6 +388,9 @@ useEffect(() => {
     setSelectedActivity('');
     setSelectedLocation('');
     setSelectedFloor('');
+    setInviteTime('now');
+    setCustomTime('');
+    setInviteNote('');
   };
 
   const handleInviteResponse = (inviteId, response) => {
@@ -419,10 +448,35 @@ useEffect(() => {
 
   const getUserById = (id) => allUsers.find(u => u.id === id);
 
-  const getInitials = (name) => {
-    return name.split(' ').map(n => n[0]).join('').toUpperCase();
+const getInitials = (name) => {
+    if (!name) return '?';
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
-
+const getTimeSlots = () => {
+    const slots = [];
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    
+    // Round up to next 30-min interval
+    let startMinute = currentMinute < 30 ? 30 : 0;
+    let startHour = currentMinute < 30 ? currentHour : currentHour + 1;
+    
+    // Generate slots from current time to 11:30 PM
+    for (let hour = startHour; hour < 24; hour++) {
+      const startMin = (hour === startHour) ? startMinute : 0;
+      for (let minute = startMin; minute < 60; minute += 30) {
+        const period = hour >= 12 ? 'PM' : 'AM';
+        const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+        const displayMinute = minute === 0 ? '00' : minute;
+        const timeString = `${displayHour}:${displayMinute} ${period}`;
+        slots.push(timeString);
+      }
+    }
+    
+    return slots;
+  };
+  
   const logout = () => {
     localStorage.clear();
     setUser(null);
@@ -616,7 +670,7 @@ useEffect(() => {
     );
   }
 
-  // ONBOARDING PAGE
+// ONBOARDING PAGE
   if (page === 'onboarding') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center p-4">
@@ -643,9 +697,17 @@ useEffect(() => {
           
           <input
             type="text"
-            placeholder="Full Name"
-            value={profile.name}
-            onChange={(e) => setProfile({...profile, name: e.target.value})}
+            placeholder="First Name"
+            value={profile.firstName}
+            onChange={(e) => setProfile({...profile, firstName: e.target.value})}
+            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl mb-4 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+          
+          <input
+            type="text"
+            placeholder="Last Name"
+            value={profile.lastName}
+            onChange={(e) => setProfile({...profile, lastName: e.target.value})}
             className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl mb-4 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
           
@@ -688,6 +750,7 @@ useEffect(() => {
             <option value="">Select Gender</option>
             <option value="Male">Male</option>
             <option value="Female">Female</option>
+            <option value="Non-binary">Non-binary</option>
             <option value="Prefer not to say">Prefer not to say</option>
           </select>
           
@@ -703,7 +766,6 @@ useEffect(() => {
       </div>
     );
   }
-
   // TUTORIAL SCREENS
   if (showTutorial) {
     const tutorials = [
@@ -1560,9 +1622,9 @@ const renderProfile = () => (
   // MAIN APP LAYOUT
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      <div className="bg-white border-b sticky top-0 z-10">
+<div className="bg-white border-b sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-800">Hey {profile.name?.split(' ')[0]}! 👋</h1>
+          <h1 className="text-2xl font-bold text-gray-800">Hey {profile.firstName || user?.name?.split(' ')[0]}! 👋</h1>
           <div className="flex items-center gap-3">
             <button className="flex items-center gap-2 text-green-600 text-sm font-medium px-3 py-2 bg-green-50 rounded-lg">
               <Bell className="w-4 h-4" />
@@ -1571,8 +1633,14 @@ const renderProfile = () => (
             <button onClick={() => checkLocation()} className="p-2 hover:bg-gray-100 rounded-lg">
               <RefreshCw className="w-5 h-5 text-gray-600" />
             </button>
-            <button onClick={() => setCurrentTab('profile')} className="w-10 h-10 rounded-full bg-blue-500 text-white flex items-center justify-center font-semibold">
-              {getInitials(profile.name)}
+            <button onClick={() => setCurrentTab('profile')} className="w-10 h-10 rounded-full overflow-hidden border-2 border-blue-500">
+              {profile.photoUrl ? (
+                <img src={profile.photoUrl} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-blue-500 text-white flex items-center justify-center font-semibold">
+                  {getInitials(profile.firstName + ' ' + profile.lastName)}
+                </div>
+              )}
             </button>
           </div>
         </div>
