@@ -1750,8 +1750,20 @@ const renderProfile = () => (
           </button>
         </div>
       </div>
-
+      {/* Floating Invite Button */}
+{isOnCampus && selectedPeople.length > 0 && (
+  <div className="fixed bottom-24 right-6 z-40">
+    <button
+      onClick={openInviteModal}
+      className="bg-blue-500 text-white px-6 py-4 rounded-full shadow-2xl flex items-center gap-2 hover:bg-blue-600 transition transform hover:scale-105"
+    >
+      <Send className="w-5 h-5" />
+      <span className="font-bold">Invite {selectedPeople.length} {selectedPeople.length === 1 ? 'person' : 'people'}</span>
+    </button>
+  </div>
+)}
       {/* Invite Modal */}
+      
       {showInviteModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 max-h-[80vh] overflow-y-auto">
